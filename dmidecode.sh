@@ -35,19 +35,7 @@ mem_info() {
 }
 
 disk_info() {
-  start='"disk_info" : ['
-  end=']'
-  diskInfo=$(sudo lshw -quiet -class disk | sed "/*-/d")
-  count=$(lshw -quiet -class disk | grep -Ec '*-disk')
-  i=1
-  while [ $i -le $count ]; do
-    fetch="$(echo "$diskInfo" | awk -vi="$i" '/description/{j++}j==i')"
-    grep_processor=$(echo "$fetch" | perl -F: -alpe 's/.*:*/"$F[0]":"$F[1]"/' | tr -s '\n' ','  |  sed 's/\s\(":"\)\s/":"/g' | sed -zE 's/[[:space:]]+([:"a-zA-Z0-9])/\1/g' )
-    proc="{"${grep_processor::-1}"},"
-    mid=$mid$proc
-    i=$((i+1))
-  done
-  echo $start${mid::-1}$end
+  df -Ph | awk '/^\// {print $1"\t"$2"\t"$4}' | python -c 'import json, fileinput; print json.dumps({"disk_info":[dict(zip(("mount", "spacetotal", "spaceavail"), l.split())) for l in fileinput.input()]}, indent=2)'
 }
 
 motherboard_info() {
@@ -60,17 +48,8 @@ motherboard_info() {
   echo $start${mid}$end
 }
 
-output_file() {
-  boardvendor=$(dmidecode -s baseboard-manufacturer)
-  boardserial=$(dmidecode -s baseboard-serial-number)
-  echo "$boardvendor-$boardserial.json"
-}
-
-
 motherboard=$(motherboard_info)
 cpu=$(cpu_info)
 mem=$(mem_info)
 disk=$(disk_info)
-filename=$(output_file)
-echo "{$motherboard,$cpu,$mem,$disk}" > "${filename}"
-
+echo "{$motherboard,$cpu,$mem,$disk}" > info.json
