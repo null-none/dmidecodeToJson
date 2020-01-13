@@ -2,7 +2,7 @@
 
 cpu_info() {
   cpufile="/proc/cpuinfo"
-  start='"cpu_info" : ['
+  start='"cpu_info":['
   end=']'
   if [ -f "$cpufile" ]; then
     count=$(grep -Ec 'processor' $cpufile)
@@ -19,7 +19,7 @@ cpu_info() {
 }
 
 mem_info() {
-  start='"mem_info" : ['
+  start='"mem_info":['
   end=']'
   memInfo=$(dmidecode --type memory | grep 'Memory\|Size\|Type\|Speed\|Manufacturer\|Serial\|Part' | sed "/Memory/d")
   count=$(echo "$memInfo" | grep -Ec 'Size')
@@ -35,11 +35,14 @@ mem_info() {
 }
 
 disk_info() {
-  df -Ph | awk '/^\// {print $1"\t"$2"\t"$4}' | python -c 'import json, fileinput; print json.dumps({"disk_info":[dict(zip(("mount", "spacetotal", "spaceavail"), l.split())) for l in fileinput.input()]}, indent=2)'
+  start='"disk_info" : ['
+  end=']'
+  info=$(lshw -C storage,disk,volume -json)
+  echo $start${info}$end
 }
 
 motherboard_info() {
-  start='"motherboard_info" : {'
+  start='"motherboard_info":{'
   end='}'
   mbinfo=$(dmidecode --type baseboard | grep 'Manufacturer\|Name\|Version\|Serial')
   grep_processor=$(echo "$mbinfo" | perl -F: -alpe 's/.*:*/"$F[0]":"$F[1]"/' | tr -s '\n' ','  |  sed 's/\s\(":"\)\s/":"/g' | sed -zE 's/[[:space:]]+([:"a-zA-Z0-9])/\1/g' )
